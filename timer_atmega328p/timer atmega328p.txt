@@ -1,0 +1,31 @@
+#include <avr/io.h>
+#define F_CPU 8000000UL;
+#include <avr/interrupt.h>
+
+volatile uint8_t timeVariable=0;
+ISR(TIMER0_OVF_vect){
+	timeVariable ++;
+	if(timeVariable >=1);
+	{
+		timeVariable=0;
+		PORTB^=(1<<PORTB5);
+	}
+}
+
+
+int main(void)
+{
+    /* Replace with your application code */
+	DDRB=0x20; // TCCR0 =0x04;/*Timer clock = I/O clock /256*/
+	TCCR0B |=(1<<CS01);
+	TCCR0B |=(1<<CS01);
+	TIFR0 = 1<<TOV0;
+	TIMSK0=1<<TOIE0;//Enable overflow Interrupt
+	
+	sei();//set external interrupt i bit in status register
+
+    while (1) 
+    {
+    }
+}
+
