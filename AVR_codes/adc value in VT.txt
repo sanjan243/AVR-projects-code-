@@ -1,0 +1,78 @@
+#define F_CPU 16000000UL
+#include <avr/io.h>
+#include <util/delay.h>
+unsigned int adc_value;
+
+
+#define BUAD 195200
+#define BAUD_PRESCALLER ((F_CPU/(16*BUAD)) - 1)
+char buffer[5];
+//Declaration of our functions
+void USART_init(void);
+unsigned char USART_receive(void);
+void USART_send( unsigned char data);
+void USART_putstring(int* StringPtr);
+
+void USART_init(void){
+	
+	UBRR0H = (uint8_t)(BAUD_PRESCALLER>>8);
+	UBRR0L = (uint8_t)(BAUD_PRESCALLER);
+	UCSR0B = (1<<RXEN0)|(1<<TXEN0);
+	UCSR0C = (3<<UCSZ00);
+}
+
+unsigned char USART_receive(void){
+	
+	while(!(UCSR0A & (1<<RXC0)));
+	return UDR0;
+	
+}
+
+void USART_send( unsigned char data){
+	itoa(data, buffer,10);
+	for(int i =0; i <=sizeof(buffer);i++){
+		while(!(UCSR0A & (1<<UDRE0)));
+		UDR0 = buffer[i];
+	}
+	
+	
+}
+
+
+#define PORT_ON(port,pin) port |= (1<<pin)
+#define PORT_OFF(port,pin) port &= ~(1<<pin)
+int main(void)
+{
+	UBRR0H = (BAUD_PRESCALLER >> 8);
+	UBRR0L = BAUD_PRESCALLER;
+	UCSR0B = (1<<RXEN0)|(1<<TXEN0);
+	UCSR0C = (3<<UCSZ00);
+
+	
+	 // Variable to hold ADC result
+	DDRB=0xff; // Set Port D as Output
+	PORTB = 0x00;
+	ADCSRA = (1<<ADEN)|(1<<ADPS2)|(1<<ADPS1)|(1<<ADPS0);
+	// ADEN: Set to turn on ADC , by default it is turned off
+	//ADPS2: ADPS2 and ADPS0 set to make division factor 32
+	ADMUX=(1<<REFS0); // ADC input channel set to PC5
+	while (1)
+	{
+		ADCSRA |= (1<<ADSC); // Start conversion
+		while (ADCSRA & (1<<ADSC)); // wait for conversion to complete
+		adc_value = ADCW; //Store ADC value
+		if (adc_value < 512)
+		{
+			PORT_OFF(PORTB,5); // Toggle LEDs
+			PORT_ON (PORTB,4);
+		}
+		else if(adc_value > 512)
+		{
+			PORT_ON (PORTB,5); // Toggle LEDs
+			PORT_OFF(PORTB,4);
+			
+		}
+		USART_send(adc_value);	
+	}
+	
+}
